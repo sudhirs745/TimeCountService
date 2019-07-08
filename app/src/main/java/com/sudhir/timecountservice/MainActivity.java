@@ -1,9 +1,12 @@
 package com.sudhir.timecountservice;
 
+import android.app.ActivityManager;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.ServiceConnection;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -26,8 +29,14 @@ public class MainActivity extends AppCompatActivity {
     private boolean isRuning = false;
     private MyService myService;
     private Intent mIntent;
-
     Button startPause;
+    private long mEndTime;
+
+    long timeSwapBuff = 0L;
+
+    SharedPreferences prefs ;
+
+    boolean  DataIsRuning ;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -35,10 +44,38 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         time = findViewById(R.id.time);
 
-        startPause= findViewById(R.id.startPause);
+        startPause = findViewById(R.id.startPause);
+
+        prefs = getSharedPreferences("prefs", MODE_PRIVATE);
+
+        long DatacurrentTime = prefs.getLong("millisLeft", 0);
+        DataIsRuning = prefs.getBoolean("timerRunning", false);
+        long  DataEnd = prefs.getLong("endTime", 0);
+
+
+        if (DataIsRuning) {
+
+            timeSwapBuff = (System.currentTimeMillis() - DataEnd) +DatacurrentTime;
+          //  mEndTime = prefs.getLong("endTime", 0);
+
+
+        }else if(!DataIsRuning){
+
+            timeSwapBuff = (System.currentTimeMillis() - DataEnd) +DatacurrentTime;
+        }
+
+
+
         mIntent = new Intent(this, MyService.class);
-        startService(mIntent);
-        bindService(mIntent, myConnection, Context.BIND_AUTO_CREATE);
+
+        if (!isMyServiceRunning(MyService.class)) {
+            startService(mIntent);
+            bindService(mIntent, myConnection, Context.BIND_AUTO_CREATE);
+        } else {
+            bindService(mIntent, myConnection, Context.BIND_AUTO_CREATE);
+
+
+        }
 
         MainActivity.sHandler = new Handler() {
 
@@ -57,19 +94,36 @@ public class MainActivity extends AppCompatActivity {
         };
 
 
-
     }
-
 
 
     public void startPause(View v) {
 
-        myService.startStop();
-        if(!isRuning){
+        if (timeSwapBuff > 0) {
+
+            if (!DataIsRuning) {
+                myService.startStop(timeSwapBuff, false);
+                isRuning = true;
+                DataIsRuning=true;
+                startPause.setText("pause");
+            }else {
+                myService.startStop(timeSwapBuff, true);
+                isRuning = false;
+                DataIsRuning=false;
+                startPause.setText("start");
+            }
+
+        }else {
+            myService.startStop();
+        }
+
+
+
+        if (!isRuning) {
             startPause.setText("pause");
 
             isRuning = true;
-        } else if(isRuning){
+        } else if (isRuning) {
             startPause.setText("start");
 
             isRuning = false;
@@ -86,7 +140,7 @@ public class MainActivity extends AppCompatActivity {
         setTime();
         startPause.setText("start");
 
-        isRuning=false;
+        isRuning = false;
 
     }
 
@@ -100,13 +154,6 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-    }
-
-
     private ServiceConnection myConnection = new ServiceConnection() {
         @Override
         public void onServiceConnected(ComponentName name, IBinder service) {
@@ -114,6 +161,16 @@ public class MainActivity extends AppCompatActivity {
             MyService.LocalBinder binder = (MyService.LocalBinder) service;
             myService = binder.getService();
             isBound = true;
+
+            if (timeSwapBuff > 0) {
+
+                if (DataIsRuning) {
+                    myService.startStop(timeSwapBuff, false);
+                    isRuning = false;
+                }
+
+            }
+
         }
 
         @Override
@@ -126,4 +183,71 @@ public class MainActivity extends AppCompatActivity {
         time.setText("" + mins + ":" + String.format("%02d", secs) + ":"
                 + String.format("%03d", millis));
     }
+
+    private boolean isMyServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        mEndTime = System.currentTimeMillis();
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putLong("millisLeft", currentTime);
+        editor.putBoolean("timerRunning", isRuning);
+        editor.putLong("endTime", mEndTime);
+        editor.apply();
+
+    }
+
+
+
+
+
+//    protected void () {
+//        super.onStop();
+//
+//        mEndTime = System.currentTimeMillis() + currentTime;
+//        SharedPreferences prefs = getSharedPreferences("prefs", MODE_PRIVATE);
+//        SharedPreferences.Editor editor = prefs.edit();
+//
+//        editor.putLong("millisLeft", currentTime);
+//        editor.putBoolean("timerRunning", isRuning);
+//        editor.putLong("endTime", mEndTime);
+//        editor.apply();
+//
+//
+//    }
+
+
+//    @Override
+//    protected void onStart() {
+//        super.onStart();
+//
+//        SharedPreferences prefs = getSharedPreferences("prefs", MODE_PRIVATE);
+//
+//        currentTime = prefs.getLong("millisLeft", 0);
+//        isRuning = prefs.getBoolean("timerRunning", false);
+//
+//        if (isRuning) {
+//            mEndTime = prefs.getLong("endTime", 0);
+//            currentTime = mEndTime - System.currentTimeMillis();
+//
+//            if (currentTime < 0) {
+//                currentTime = 0;
+//                isRuning = false;
+//                timeSwapBuff=currentTime ;
+//
+//            }
+//        }
+//    }
+
+
 }

@@ -7,6 +7,7 @@ import android.os.IBinder;
 import android.os.Message;
 import android.os.SystemClock;
 import android.util.Log;
+import android.widget.Toast;
 
 public class MyService extends Service {
 
@@ -19,7 +20,10 @@ public class MyService extends Service {
     private final IBinder mBinder = new LocalBinder();
     private Message timeMsg;
 
-    public MyService() { }
+    public MyService( ) {
+
+
+    }
 
     public Runnable updateTimer = new Runnable() {
         public void run() {
@@ -30,8 +34,8 @@ public class MyService extends Service {
             timeMsg = new Message();
             timeMsg.obj = updatedTime;
             MainActivity.sHandler.sendMessage(timeMsg);
-
             MainActivity.sHandler.postDelayed(this, 10);
+
         }
     };
 
@@ -45,6 +49,24 @@ public class MyService extends Service {
     public IBinder onBind(Intent intent) {
 
         return mBinder;
+    }
+
+
+    public void startStop(long timeSwapBuff , boolean isRunning){
+
+        this.timeSwapBuff =timeSwapBuff;
+        this.isRunning =isRunning;
+
+        if (isRunning) {
+            timeSwapBuff += timeInMilliseconds;
+            MainActivity.sHandler.removeCallbacks(updateTimer);
+            isRunning = false;
+        } else {
+            startTime = SystemClock.uptimeMillis();
+            updateTimer.run();
+//            MainActivity.sHandler.postDelayed(updateTimer, 10);
+            isRunning = true;
+        }
     }
 
 
@@ -77,6 +99,8 @@ public class MyService extends Service {
         MainActivity.sHandler.sendMessage(timeMsg);
 
     }
+
+
 
     public class LocalBinder extends Binder {
         public MyService getService(){
