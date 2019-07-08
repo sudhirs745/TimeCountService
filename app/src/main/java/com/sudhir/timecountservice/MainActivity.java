@@ -52,20 +52,12 @@ public class MainActivity extends AppCompatActivity {
         DataIsRuning = prefs.getBoolean("timerRunning", false);
         long  DataEnd = prefs.getLong("endTime", 0);
 
+  if(DatacurrentTime>0) {
+      timeSwapBuff = (System.currentTimeMillis() - DataEnd) + DatacurrentTime;
 
-        if (DataIsRuning) {
-
-            timeSwapBuff = (System.currentTimeMillis() - DataEnd) +DatacurrentTime;
-          //  mEndTime = prefs.getLong("endTime", 0);
-
-
-        }else if(!DataIsRuning){
-
-            timeSwapBuff = (System.currentTimeMillis() - DataEnd) +DatacurrentTime;
-        }
-
-
-
+  }else {
+      timeSwapBuff=0;
+  }
         mIntent = new Intent(this, MyService.class);
 
         if (!isMyServiceRunning(MyService.class)) {
@@ -115,19 +107,21 @@ public class MainActivity extends AppCompatActivity {
 
         }else {
             myService.startStop();
+
+            if (!isRuning) {
+                DataIsRuning=true;
+                startPause.setText("pause");
+                isRuning = true;
+            } else if (isRuning) {
+                DataIsRuning=false;
+                startPause.setText("start");
+                isRuning = false;
+            }
         }
 
 
 
-        if (!isRuning) {
-            startPause.setText("pause");
 
-            isRuning = true;
-        } else if (isRuning) {
-            startPause.setText("start");
-
-            isRuning = false;
-        }
 
     }
 
@@ -139,8 +133,14 @@ public class MainActivity extends AppCompatActivity {
         millis = 0;
         setTime();
         startPause.setText("start");
-
+        timeSwapBuff=0;
         isRuning = false;
+
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putLong("millisLeft", 0);
+        editor.putBoolean("timerRunning", false);
+        editor.putLong("endTime", 0);
+        editor.commit();
 
     }
 
@@ -166,7 +166,9 @@ public class MainActivity extends AppCompatActivity {
 
                 if (DataIsRuning) {
                     myService.startStop(timeSwapBuff, false);
-                    isRuning = false;
+                    isRuning = true;
+                    DataIsRuning=true;
+                    startPause.setText("pause");
                 }
 
             }
@@ -203,7 +205,7 @@ public class MainActivity extends AppCompatActivity {
         editor.putLong("millisLeft", currentTime);
         editor.putBoolean("timerRunning", isRuning);
         editor.putLong("endTime", mEndTime);
-        editor.apply();
+        editor.commit();
 
     }
 
